@@ -1,0 +1,47 @@
+name: Build EXE in Cloud
+on:
+  workflow_dispatch: # 允许你手动点击按钮触发构建
+
+jobs:
+  build:
+    runs-on: windows-latest # 使用 GitHub 提供的 Windows 云主机
+
+    steps:
+      - name: 获取源码
+        uses: actions/checkout@v4
+
+      - name: 配置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: 安装依赖
+        run: pnpm install
+
+      - name: 预加载数据与图片 # 运行你刚才写的下载脚本
+        run: node preload.js 
+
+      - name: 编译前端项目
+        run: pnpm build
+
+      - name: 安装 Rust (Tauri 依赖)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Tauri 打包 EXE
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: './' # 假设你已在云端初始化了 tauri
+          args: ${{ matrix.args }}
+
+      - name: 上传 EXE 文件供下载
+        uses: actions/upload-artifact@v4
+        with:
+          name: sekai-viewer-exe
+          path: src-tauri/target/release/bundle/nsis/*.exe
