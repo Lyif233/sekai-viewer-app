@@ -1,0 +1,45 @@
+name: Build APK in Cloud
+于:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # 使用 Linux 云主机编译安卓包最快
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: 配置 Node.js 与 pnpm
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install -g pnpm
+
+      - name: 配置 Java JDK (安卓依赖)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: 安装依赖并执行预加载
+        run: |
+          pnpm install
+          node preload.js
+          pnpm build
+
+      - name: Capacitor 同步到安卓环境
+        run: |
+          pnpm add @capacitor/core @capacitor/android @capacitor/cli
+          npx cap init sekai-viewer com.sekai.viewer --web-dir dist
+          npx cap add android
+          npx cap sync android
+
+      - name: Gradle 编译 APK
+        working-directory: ./android
+        run: ./gradlew assembleDebug # 编译生成测试版 APK
+
+      - name: 上传 APK 文件供下载
+        uses: actions/upload-artifact@v4
+        with:
+          name: sekai-viewer-apk
+          path: android/app/build/outputs/apk/debug/*.apk
