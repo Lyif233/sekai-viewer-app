@@ -1,5 +1,5 @@
 name: Build APK in Cloud
-于:
+on:
   workflow_dispatch:
 
 jobs:
